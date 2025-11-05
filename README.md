@@ -21,3 +21,4 @@ docker compose -f infra/docker-compose.dev.yml exec backend python manage.py cre
 # API:      http://localhost:8000
 # Admin:    http://localhost:8000/admin
 ```
+Deployed via GitHub Actions on Wed Nov  5 22:19:58 CET 2025
