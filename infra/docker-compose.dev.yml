@@ -1,0 +1,172 @@
+name: expertauto
+
+networks:
+  expertauto:
+    driver: bridge
+
+services:
+  # =========================
+  # Postgres
+  # =========================
+  db:
+    image: postgres:16
+    env_file:
+      - ../.env
+    volumes:
+      - /opt/expertauto/data/db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks: [expertauto]
+
+  # =========================
+  # Redis (broker/results)
+  # =========================
+  redis:
+    image: redis:7
+    # Лёгкий режим без AOF/RDB, чтобы не было «Connection closed by server»
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    volumes:
+      - /opt/expertauto/data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "PING"]
+      interval: 5s
+      timeout: 2s
+      retries: 12
+    restart: unless-stopped
+    networks: [expertauto]
+
+  # =========================
+  # Django backend (Gunicorn)
+  # =========================
+  backend:
+    build:
+      context: ../apps/backend
+      dockerfile: Dockerfile
+    env_file:
+      - ../.env
+    environment:
+      TZ: Europe/Chisinau
+      # Жёстко задаём bind/workers/timeout через CMD_ARGS
+      GUNICORN_CMD_ARGS: "--bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-3} --timeout 60"
+    user: "1000:1000"
+    command: >
+      sh -c "
+        : $${GUNICORN_APP:=project.wsgi};
+        echo Using GUNICORN_APP=$$GUNICORN_APP CMD_ARGS=\"$${GUNICORN_CMD_ARGS}\"; 
+        exec python -m gunicorn $$GUNICORN_APP:application
+      "
+    expose:
+      - "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - /opt/expertauto/data/media:/app/media
+      - /opt/expertauto/data/static:/app/static
+      - /opt/expertauto/data/logs:/app/logs
+    restart: unless-stopped
+    networks: [expertauto]
+
+  # =========================
+  # Celery worker
+  # =========================
+  worker:
+    build:
+      context: ../apps/backend
+      dockerfile: Dockerfile
+    env_file:
+      - ../.env
+    environment:
+      TZ: Europe/Chisinau
+      CELERYD_CONCURRENCY: ${CELERY_CONCURRENCY:-3}
+      # Если используете project/celery.py — оставляем -A project
+      CELERY_APP: ${CELERY_APP:-project}
+    user: "1000:1000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    # ВАЖНО: без "-Q default", чтобы слушать стандартную очередь "celery"
+    command: >
+      sh -c "
+        exec celery -A $${CELERY_APP:-project} worker
+          --loglevel=INFO
+          --scheduler django_celery_beat.schedulers:DatabaseScheduler
+      "
+    restart: unless-stopped
+    networks: [expertauto]
+
+  # =========================
+  # Celery beat (расписания)
+  # =========================
+  beat:
+    build:
+      context: ../apps/backend
+      dockerfile: Dockerfile
+    env_file:
+      - ../.env
+    environment:
+      TZ: Europe/Chisinau
+      CELERY_APP: ${CELERY_APP:-project}
+    user: "1000:1000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "
+        exec celery -A $${CELERY_APP:-project} beat
+          --loglevel=INFO
+          --scheduler django_celery_beat.schedulers:DatabaseScheduler
+      "
+    restart: unless-stopped
+    networks: [expertauto]
+
+  # =========================
+  # Next.js frontend
+  # =========================
+  frontend:
+    build:
+      context: ../apps/frontend
+      dockerfile: Dockerfile
+    env_file:
+      - ../.env
+    environment:
+      NODE_ENV: production
+      TZ: Europe/Chisinau
+      PORT: 3000
+    expose:
+      - "3000"
+    depends_on:
+      backend:
+        condition: service_started
+    restart: unless-stopped
+    networks: [expertauto]
+
+  # =========================
+  # Caddy (HTTPS reverse proxy)
+  # =========================
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /opt/expertauto/data/caddy:/data
+      - /opt/expertauto/data/caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_started
+      backend:
+        condition: service_started
+    restart: unless-stopped
+    networks: [expertauto]

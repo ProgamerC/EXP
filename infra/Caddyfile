@@ -1,0 +1,51 @@
+# infra/Caddyfile
+
+eauto.md, www.eauto.md, 4car.md, www.4car.md {
+  encode zstd gzip
+
+  # Security headers
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "SAMEORIGIN"
+    Referrer-Policy "strict-origin-when-cross-origin"
+  }
+
+  # ===== Canonical redirects =====
+  @old host 4car.md www.4car.md
+  handle @old {
+    redir https://eauto.md{uri} 308
+  }
+
+  @www host www.eauto.md
+  handle @www {
+    redir https://eauto.md{uri} 308
+  }
+
+  # ===== Next.js API routes (must go to frontend) =====
+  @next_tg path /api/sendToTelegram*
+  handle @next_tg {
+    reverse_proxy http://frontend:3000
+  }
+
+  @next_tradein path /api/trade-in*
+  handle @next_tradein {
+    reverse_proxy http://frontend:3000
+  }
+
+  @next_credit path /api/credit-leasing*
+  handle @next_credit {
+    reverse_proxy http://frontend:3000
+  }
+
+  # ===== Django backend (API/Admin/Static/Media) =====
+  @api path /api/* /admin/* /static/* /media/*
+  handle @api {
+    reverse_proxy http://backend:8000
+  }
+
+  # ===== Everything else -> Next.js frontend =====
+  handle {
+    reverse_proxy http://frontend:3000
+  }
+}

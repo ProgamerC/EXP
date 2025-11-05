@@ -1,0 +1,26 @@
+# secrets & env
+.env
+.env*
+env/
+
+# django/runtime
+media/
+static/
+__pycache__/
+*.pyc
+*.log
+*.sqlite3
+tmp/
+backup_*.sql
+
+# node/next (если есть фронт)
+node_modules/
+apps/frontend/.next/
+apps/frontend/.turbo/
+apps/frontend/.vercel/
+apps/frontend/.cache/
+apps/frontend/out/
+apps/frontend/build/
+
+# os
+.DS_Store

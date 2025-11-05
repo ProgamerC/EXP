@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+:root {
+    color-scheme: dark;
+}
+
+html,
+body {
+    height: 100%;
+}
+
+body {
+    @apply bg-bg text-white antialiased;
+}
+
+
+/* Все наши кастомные классы оформляем в @layer components,
+   чтобы Tailwind спокойно прожевал @apply */
+
+@layer components {
+    .container {
+        @apply max-w-[1140px] mx-auto px-4;
+    }
+    .card {
+        @apply bg-surface rounded-2xl p-4 shadow-card border border-border;
+    }
+    .badge {
+        @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs bg-surface2/70 border border-border;
+    }
+    .btn {
+        @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-black font-medium transition;
+    }
+    .btn:hover {
+        @apply opacity-90;
+    }
+    .btn-ghost {
+        @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface2 border border-border text-white transition;
+    }
+    .btn-ghost:hover {
+        @apply bg-surface;
+    }
+    .input {
+        @apply w-full bg-surface2 border border-border rounded-xl px-3 py-2 outline-none;
+    }
+    .input::placeholder {
+        @apply opacity-60;
+    }
+    .select {
+        @apply w-full bg-surface2 border border-border rounded-xl px-3 py-2 outline-none;
+    }
+    .glass {
+        @apply bg-white/5 border border-white/10 backdrop-blur;
+    }
+}
+
+
+/* декоративные «glow» элементы */
+
+.gradient-ring {
+    background: radial-gradient(600px 200px at 20% 0%, rgba(126, 231, 255, .25), transparent 60%), radial-gradient(600px 200px at 100% 30%, rgba(167, 139, 250, .18), transparent 60%);
+    pointer-events: none;
+}
+
+
+/* скрываем низ сайта (footer/panouri fixe cu butoane)
+   когда открыта полноэкранная галерея */
+
+.gallery-fullscreen-open .site-bottom {
+    display: none !important;
+}
