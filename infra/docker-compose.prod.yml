@@ -42,9 +42,8 @@ services:
   # Django backend (Gunicorn)
   # =========================
   backend:
-    build:
-      context: ../apps/backend
-      dockerfile: Dockerfile
+#       context: ../apps/backend
+#       dockerfile: Dockerfile
     env_file:
       - ../.env
     environment:
@@ -71,14 +70,16 @@ services:
       - /opt/expertauto/data/logs:/app/logs
     restart: unless-stopped
     networks: [expertauto]
+    image: ghcr.io/progamerc/exp-backend:9ce46cf2625529886a1ef16d3f3581a7fba4b083
 
   # =========================
   # Celery worker
   # =========================
   worker:
-    build:
-      context: ../apps/backend
-      dockerfile: Dockerfile
+    image: ghcr.io/progamerc/exp-backend:9ce46cf2625529886a1ef16d3f3581a7fba4b083
+#     build:
+#       context: ../apps/backend
+#       dockerfile: Dockerfile
     env_file:
       - ../.env
     environment:
@@ -105,9 +106,10 @@ services:
   # Celery beat (расписания)
   # =========================
   beat:
-    build:
-      context: ../apps/backend
-      dockerfile: Dockerfile
+    image: ghcr.io/progamerc/exp-backend:9ce46cf2625529886a1ef16d3f3581a7fba4b083
+#     build:
+#       context: ../apps/backend
+#       dockerfile: Dockerfile
     env_file:
       - ../.env
     environment:
@@ -133,9 +135,8 @@ services:
   # Next.js frontend
   # =========================
   frontend:
-    build:
-      context: ../apps/frontend
-      dockerfile: Dockerfile
+#       context: ../apps/frontend
+#       dockerfile: Dockerfile
     env_file:
       - ../.env
     environment:
@@ -149,6 +150,7 @@ services:
         condition: service_started
     restart: unless-stopped
     networks: [expertauto]
+    image: ghcr.io/progamerc/exp-frontend:9ce46cf2625529886a1ef16d3f3581a7fba4b083
 
   # =========================
   # Caddy (HTTPS reverse proxy)
