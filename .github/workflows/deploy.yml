@@ -2,46 +2,60 @@ name: Deploy to Production
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
 
 env:
   SSH_HOST: eauto.md
-  SSH_PORT: 22
-  SSH_USER: deploy   # <— деплой-юзер
+  SSH_PORT: '22'
+  SSH_USER: deploy
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Validate SSH_KEY
-        run: test -n "${{ secrets.SSH_KEY }}" || (echo "Missing SSH_KEY" && exit 1)
+        run: |
+          if [ -z "${{ secrets.SSH_KEY }}" ]; then
+            echo "Missing SSH_KEY secret"; exit 1;
+          fi
+          echo "Target: ${{ env.SSH_USER }}@${{ env.SSH_HOST }}:${{ env.SSH_PORT }}"
 
       - name: Setup SSH agent
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_KEY }}
 
-      - name: Add known_hosts if provided
-        env: { KNOWN_HOSTS: ${{ secrets.KNOWN_HOSTS }} }
+      - name: Add known_hosts (optional)
         run: |
-          if [ -n "${KNOWN_HOSTS}" ]; then mkdir -p ~/.ssh; echo "${KNOWN_HOSTS}" >> ~/.ssh/known_hosts; fi
+          if [ -n "${{ secrets.KNOWN_HOSTS }}" ]; then
+            mkdir -p ~/.ssh
+            echo "${{ secrets.KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
+          fi
 
       - name: Smoke test SSH
-        env: { KNOWN_HOSTS: ${{ secrets.KNOWN_HOSTS }} }
         run: |
-          OPTS="-vvv -p ${{ env.SSH_PORT }}"; [ -z "${KNOWN_HOSTS}" ] && OPTS="$OPTS -o StrictHostKeyChecking=no"
+          OPTS="-vvv -p ${{ env.SSH_PORT }}"
+          if [ -z "${{ secrets.KNOWN_HOSTS }}" ]; then
+            OPTS="$OPTS -o StrictHostKeyChecking=no"
+          fi
           ssh $OPTS ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "echo 'SSH_OK:' \$(hostname) && whoami && groups && docker --version"
 
-      - name: Ensure deploy.sh exists and executable
-        env: { KNOWN_HOSTS: ${{ secrets.KNOWN_HOSTS }} }
+      - name: Ensure deploy.sh exists
         run: |
-          OPTS="-p ${{ env.SSH_PORT }}"; [ -z "${KNOWN_HOSTS}" ] && OPTS="$OPTS -o StrictHostKeyChecking=no"
+          OPTS="-p ${{ env.SSH_PORT }}"
+          if [ -z "${{ secrets.KNOWN_HOSTS }}" ]; then
+            OPTS="$OPTS -o StrictHostKeyChecking=no"
+          fi
           ssh $OPTS ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "bash -lc 'ls -l /opt/expertauto_working_1/deploy.sh && test -x /opt/expertauto_working_1/deploy.sh'"
 
       - name: Deploy
-        env: { KNOWN_HOSTS: ${{ secrets.KNOWN_HOSTS }} }
         run: |
-          OPTS="-p ${{ env.SSH_PORT }}"; [ -z "${KNOWN_HOSTS}" ] && OPTS="$OPTS -o StrictHostKeyChecking=no"
+          OPTS="-p ${{ env.SSH_PORT }}"
+          if [ -z "${{ secrets.KNOWN_HOSTS }}" ]; then
+            OPTS="$OPTS -o StrictHostKeyChecking=no"
+          fi
           ssh $OPTS ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "bash -lc 'set -x; cd /opt/expertauto_working_1 && ./deploy.sh'"
