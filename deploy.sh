@@ -1,8 +1,36 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
+
+# Надёжный PATH для non-login SSH
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 APP_DIR="/opt/expertauto_working_1"
-DC="docker compose --env-file ${APP_DIR}/.env -f ${APP_DIR}/infra/docker-compose.prod.yml"
+COMPOSE_FILE="${APP_DIR}/infra/docker-compose.prod.yml"
+ENV_FILE="${APP_DIR}/.env"
+
+# Говорим git, что этот каталог безопасный
+git config --global --add safe.directory "${APP_DIR}" || true
+
+# Находим docker + compose v2
+DOCKER_BIN="$(command -v docker || true)"
+if [ -z "$DOCKER_BIN" ]; then
+  echo "ERROR: docker не найден в PATH=${PATH}" >&2
+  exit 1
+fi
+if $DOCKER_BIN compose version >/dev/null 2>&1; then
+  DC="$DOCKER_BIN compose --env-file ${ENV_FILE} -f ${COMPOSE_FILE}"
+else
+  echo "ERROR: 'docker compose' (v2) недоступен." >&2
+  exit 1
+fi
+
+echo "== Debug =="
+echo "USER=$(whoami) HOST=$(hostname)"
+echo "Docker: $($DOCKER_BIN --version)"
+echo "Compose: $($DOCKER_BIN compose version)"
+echo "APP_DIR=${APP_DIR}"
+echo "ENV exists? $( [ -f "${ENV_FILE}" ] && echo yes || echo no )"
+echo "================"
 
 echo "[1/6] Pull latest code…"
 cd "$APP_DIR"
