@@ -1,5 +1,6 @@
 name: Build GHCR Images
 on:
+  workflow_dispatch:
   push:
     branches: [ "main" ]
 permissions:
