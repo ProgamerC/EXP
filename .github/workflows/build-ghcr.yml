@@ -1,4 +1,4 @@
-name: Build & Push images to GHCR
+name: Build GHCR Images
 on:
   push:
     branches: [ "main" ]
