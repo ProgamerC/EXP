@@ -28,8 +28,8 @@ jobs:
           file: ./apps/backend/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/exp-backend:latest
-            ghcr.io/${{ github.repository_owner }}/exp-backend:${{ github.sha }}
+            ghcr.io/${{ lower(github.repository_owner) }}/exp-backend:latest
+            ghcr.io/${{ lower(github.repository_owner) }}/exp-backend:${{ github.sha }}
 
       # FRONTEND
       - name: Build & push frontend
@@ -39,5 +39,5 @@ jobs:
           file: ./apps/frontend/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/exp-frontend:latest
-            ghcr.io/${{ github.repository_owner }}/exp-frontend:${{ github.sha }}
+            ghcr.io/${{ lower(github.repository_owner) }}/exp-frontend:latest
+            ghcr.io/${{ lower(github.repository_owner) }}/exp-frontend:${{ github.sha }}
